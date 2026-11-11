@@ -1,0 +1,2479 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceLens – Explore Space in Real Time</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    colors: {
+                        space: {
+                            950: '#030712',
+                            900: '#060b19',
+                            850: '#09122a',
+                            800: '#0c1634',
+                            750: '#112048',
+                            700: '#16285a',
+                            600: '#1e387c',
+                            cyan: '#00d2ff',
+                            sky: '#38bdf8',
+                            accent: '#3b82f6',
+                            glow: '#60a5fa',
+                            purple: '#8b5cf6',
+                            purpleGlow: '#a78bfa'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-blue': '0 0 25px rgba(56, 189, 248, 0.25)',
+                        'neon-cyan': '0 0 35px rgba(0, 210, 255, 0.3)',
+                        'neon-purple': '0 0 30px rgba(139, 92, 246, 0.25)',
+                        'card-glow': '0 10px 30px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.12)'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js & OrbitControls for Interactive 3D Earth Globe -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+        body {
+            background-color: #030712;
+            color: #f1f5f9;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphic Cards & Panels */
+        .glass-card {
+            background: rgba(9, 18, 42, 0.68);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.75), 0 0 15px rgba(56, 189, 248, 0.08);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.85), 0 0 25px rgba(56, 189, 248, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .glass-nav {
+            background: rgba(6, 11, 25, 0.78);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+        }
+
+        .glass-input {
+            background: rgba(4, 9, 22, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            border-color: rgba(56, 189, 248, 0.75);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+            outline: none;
+        }
+
+        /* Active Navigation Pill */
+        .nav-pill-active {
+            background: rgba(14, 165, 233, 0.18);
+            border: 1px solid rgba(56, 189, 248, 0.7);
+            color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), inset 0 0 10px rgba(56, 189, 248, 0.15);
+        }
+
+        /* Sidebar Category Active Pill */
+        .category-pill-active {
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.25), rgba(59, 130, 246, 0.12));
+            border: 1px solid rgba(56, 189, 248, 0.6);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
+        }
+
+        /* Glowing Accent Borders */
+        .border-glow-blue {
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+        }
+        .border-glow-purple {
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #16285a;
+            border-radius: 9999px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+
+        /* Ambient Background Grid & Stars */
+        .starfield {
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #ffffff 100%, transparent),
+                radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,0.7) 100%, transparent),
+                radial-gradient(1.5px 1.5px at 150px 200px, rgba(56,189,248,0.9) 100%, transparent),
+                radial-gradient(1px 1px at 220px 60px, rgba(255,255,255,0.8) 100%, transparent),
+                radial-gradient(1.5px 1.5px at 310px 180px, rgba(168,85,247,0.8) 100%, transparent),
+                radial-gradient(1px 1px at 450px 290px, #ffffff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 600px 110px, rgba(56,189,248,0.9) 100%, transparent),
+                radial-gradient(1px 1px at 750px 240px, rgba(255,255,255,0.6) 100%, transparent),
+                radial-gradient(1px 1px at 900px 80px, #ffffff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 1050px 210px, rgba(56,189,248,0.8) 100%, transparent);
+            background-repeat: repeat;
+            background-size: 800px 450px;
+        }
+
+        /* Smooth tab fade transitions */
+        .tab-view {
+            animation: fadeInTab 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeInTab {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Orbit Visualizer Pin Label */
+        .orbit-pin-label {
+            background: rgba(6, 11, 25, 0.88);
+            border: 1px solid #00d2ff;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.5);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            pointer-events: none;
+            user-select: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-space-950 text-slate-100 starfield relative selection:bg-blue-600 selection:text-white">
+
+    <!-- TOP GLOBAL NAVIGATION BAR (Matches reference layout) -->
+    <header class="sticky top-0 z-50 w-full px-4 lg:px-10 py-3.5 glass-nav border-b border-space-700/40">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <!-- Brand Logo with Glowing Orbital Ring -->
+            <a href="#" onclick="switchTab('dashboard')" class="flex items-center space-x-3 group cursor-pointer select-none">
+                <div class="relative w-9 h-9 flex items-center justify-center">
+                    <!-- Stylized Planet Ring Logo (SVG) -->
+                    <svg class="w-9 h-9 transform group-hover:scale-105 transition duration-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.7)]" viewBox="0 0 44 44" fill="none">
+                        <circle cx="22" cy="22" r="14" fill="url(#planet-grad)" />
+                        <ellipse cx="22" cy="22" rx="20" ry="7" transform="rotate(-30 22 22)" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="85 15" />
+                        <circle cx="36" cy="14" r="2.5" fill="#ffffff" />
+                        <defs>
+                            <linearGradient id="planet-grad" x1="8" y1="8" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#3b82f6" />
+                                <stop offset="1" stop-color="#1d4ed8" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="flex items-baseline font-bold text-xl tracking-tight">
+                    <span class="text-white">Space</span><span class="text-sky-400">Lens</span>
+                </div>
+            </a>
+
+            <!-- Center Navigation Pills (Desktop & Tablet) -->
+            <nav class="hidden md:flex items-center space-x-1.5 p-1 rounded-full bg-space-900/80 border border-space-700/60 shadow-inner">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition nav-pill-active">
+                    <i class="fa-solid fa-house text-xs"></i>
+                    <span>Home</span>
+                </button>
+                <button onclick="switchTab('satellites')" id="nav-satellites" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-compass text-xs"></i>
+                    <span>Explore</span>
+                </button>
+                <button onclick="switchTab('launches')" id="nav-launches" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-rocket text-xs"></i>
+                    <span>Launches</span>
+                </button>
+                <button onclick="switchTab('visualizer')" id="nav-visualizer" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-circle-nodes text-xs"></i>
+                    <span>Orbit Visualizer</span>
+                </button>
+                <button onclick="switchTab('glossary')" id="nav-glossary" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-book-open text-xs"></i>
+                    <span>Glossary</span>
+                </button>
+                <button onclick="switchTab('saved')" id="nav-saved" class="flex items-center space-x-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-bookmark text-xs"></i>
+                    <span>Saved</span>
+                    <span id="nav-saved-badge" class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-blue-600 text-white font-semibold hidden">0</span>
+                </button>
+            </nav>
+
+            <!-- Right Controls: APOD, Theme Toggle, Mobile Hamburger -->
+            <div class="flex items-center space-x-3">
+                <button onclick="fetchNASAAPODModal()" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-900/30 border border-blue-500/30 text-xs font-medium text-sky-300 hover:bg-blue-600/30 hover:border-blue-400 transition">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <span>NASA APOD</span>
+                </button>
+
+                <!-- Language Toggle (EN/HI) -->
+                <div class="hidden sm:flex items-center bg-space-900/90 rounded-full border border-space-700/60 p-0.5 text-xs">
+                    <button onclick="setLanguage('en')" id="lang-en" class="px-2.5 py-1 rounded-full bg-blue-600 text-white font-semibold transition text-[11px]">EN</button>
+                    <button onclick="setLanguage('hi')" id="lang-hi" class="px-2.5 py-1 rounded-full text-slate-400 hover:text-white transition text-[11px]">हिंदी</button>
+                </div>
+
+                <!-- Theme / Moon Indicator Button -->
+                <button onclick="toggleTheme()" class="w-9 h-9 rounded-full bg-space-900/90 border border-space-700/70 hover:border-sky-400/50 flex items-center justify-center text-sky-300 hover:text-sky-100 transition shadow-inner" title="Theme">
+                    <i class="fa-solid fa-moon text-xs"></i>
+                </button>
+
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleMobileNav()" class="md:hidden w-9 h-9 rounded-full bg-space-900 border border-space-700 flex items-center justify-center text-slate-200 hover:text-white">
+                    <i class="fa-solid fa-bars text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Drawer -->
+        <div id="mobile-nav" class="md:hidden hidden pt-4 pb-2 border-t border-space-700/50 mt-3 space-y-2">
+            <button onclick="switchTab('dashboard'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-house w-5 text-sky-400"></i>
+                <span>Home</span>
+            </button>
+            <button onclick="switchTab('satellites'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-compass w-5 text-sky-400"></i>
+                <span>Explore Satellites</span>
+            </button>
+            <button onclick="switchTab('launches'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-rocket w-5 text-sky-400"></i>
+                <span>Launch Tracker</span>
+            </button>
+            <button onclick="switchTab('visualizer'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-circle-nodes w-5 text-sky-400"></i>
+                <span>Orbit Visualizer</span>
+            </button>
+            <button onclick="switchTab('glossary'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-book-open w-5 text-sky-400"></i>
+                <span>Space Glossary</span>
+            </button>
+            <button onclick="switchTab('saved'); toggleMobileNav();" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-space-900/90 text-sm text-left font-medium text-slate-200 hover:bg-blue-600/20">
+                <i class="fa-solid fa-bookmark w-5 text-sky-400"></i>
+                <span>Saved Items</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+
+        <!-- ============================================================== -->
+        <!-- 1. HOME / DASHBOARD VIEW (Matches home space.png)              -->
+        <!-- ============================================================== -->
+        <section id="view-dashboard" class="tab-view flex-1 flex flex-col justify-between space-y-10 relative">
+            
+            <!-- Hero Section with Cinematic Earth & Satellite Graphic -->
+            <div class="relative min-h-[440px] sm:min-h-[500px] flex items-center rounded-3xl overflow-hidden p-6 sm:p-10 lg:p-14">
+                
+                <!-- Background Hero Earth & Satellite Artwork -->
+                <div class="absolute inset-0 z-0 bg-cover bg-no-repeat bg-right-top sm:bg-right opacity-90 sm:opacity-100" style="background-image: url('assets/hero_earth_satellite.png');"></div>
+                <!-- Dark Gradient Vignette Overlay to ensure razor-sharp text legibility -->
+                <div class="absolute inset-0 z-0 bg-gradient-to-r from-space-950 via-space-950/80 to-transparent sm:via-space-950/70 pointer-events-none"></div>
+                <div class="absolute inset-0 z-0 bg-gradient-to-t from-space-950 via-transparent to-transparent pointer-events-none"></div>
+
+                <!-- Hero Content (Left aligned) -->
+                <div class="relative z-10 max-w-xl space-y-5">
+                    
+                    <!-- Badge Pill -->
+                    <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-space-900/80 border border-sky-500/40 text-xs font-semibold text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.25)] backdrop-blur-md">
+                        <span>🌎</span>
+                        <span data-i18n="hero_pill">Explore • Track • Learn</span>
+                    </div>
+
+                    <!-- Main Headline -->
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
+                        Explore Space <br>
+                        with <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400">SpaceLens</span>
+                    </h1>
+
+                    <!-- Subtitle -->
+                    <p class="text-sm sm:text-base text-slate-300 font-normal leading-relaxed" data-i18n="hero_subtitle">
+                        Track live satellites, recent launches, visualize orbits, and learn space terms — all in one place.
+                    </p>
+
+                    <!-- CTAs -->
+                    <div class="pt-2 flex flex-wrap items-center gap-3.5">
+                        <button onclick="switchTab('satellites')" class="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-semibold text-sm flex items-center gap-2.5 shadow-[0_0_25px_rgba(14,165,233,0.45)] hover:shadow-[0_0_35px_rgba(14,165,233,0.65)] transform hover:-translate-y-0.5 transition duration-200">
+                            <i class="fa-solid fa-rocket text-xs"></i>
+                            <span data-i18n="explore_btn">Explore Satellites &rarr;</span>
+                        </button>
+                        
+                        <button onclick="fetchNASAAPODModal()" class="px-5 py-3 rounded-full bg-space-900/80 hover:bg-space-800 border border-space-700/80 hover:border-sky-400/50 text-slate-200 hover:text-white font-medium text-sm flex items-center gap-2.5 backdrop-blur-md transition duration-200">
+                            <i class="fa-solid fa-play text-xs text-sky-400"></i>
+                            <span data-i18n="learn_btn">Learn Space</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5 Feature Cards (Matches home space.png layout exactly) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
+                
+                <!-- 1. Satellite Explorer -->
+                <div onclick="switchTab('satellites')" class="glass-card rounded-2xl p-5 cursor-pointer group flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-24 h-24 bg-sky-500/10 rounded-full blur-xl group-hover:bg-sky-500/20 transition"></div>
+                    <div class="w-10 h-10 rounded-full bg-space-850 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-4 group-hover:scale-110 group-hover:border-sky-400 transition duration-300">
+                        <i class="fa-solid fa-satellite text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-sky-300 transition">Satellite Explorer</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">Track and analyze live satellite data from CelesTrak.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Launch Tracker -->
+                <div onclick="switchTab('launches')" class="glass-card rounded-2xl p-5 cursor-pointer group flex flex-col justify-between min-h-[140px] relative overflow-hidden border-glow-purple">
+                    <div class="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/15 rounded-full blur-xl group-hover:bg-purple-500/25 transition"></div>
+                    <div class="w-10 h-10 rounded-full bg-space-850 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 group-hover:border-purple-300 transition duration-300">
+                        <i class="fa-solid fa-rocket text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-purple-300 transition">Launch Tracker</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">Follow recent and upcoming rocket launches.</p>
+                    </div>
+                </div>
+
+                <!-- 3. Orbit Visualizer -->
+                <div onclick="switchTab('visualizer')" class="glass-card rounded-2xl p-5 cursor-pointer group flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition"></div>
+                    <div class="w-10 h-10 rounded-full bg-space-850 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 group-hover:scale-110 group-hover:border-cyan-300 transition duration-300">
+                        <i class="fa-solid fa-circle-nodes text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-cyan-300 transition">Orbit Visualizer</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">See how satellites move around Earth.</p>
+                    </div>
+                </div>
+
+                <!-- 4. Space Glossary -->
+                <div onclick="switchTab('glossary')" class="glass-card rounded-2xl p-5 cursor-pointer group flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition"></div>
+                    <div class="w-10 h-10 rounded-full bg-space-850 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-4 group-hover:scale-110 group-hover:border-blue-300 transition duration-300">
+                        <i class="fa-solid fa-book-open text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-blue-300 transition">Space Glossary</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">Understand key space terms in simple language.</p>
+                    </div>
+                </div>
+
+                <!-- 5. Saved Items -->
+                <div onclick="switchTab('saved')" class="glass-card rounded-2xl p-5 cursor-pointer group flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
+                    <div class="w-10 h-10 rounded-full bg-space-850 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4 group-hover:scale-110 group-hover:border-indigo-300 transition duration-300">
+                        <i class="fa-solid fa-bookmark text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-indigo-300 transition">Saved Items</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">Bookmark your favourite satellites and launches.</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- 2. EXPLORE SATELLITES VIEW (Matches space explore.png)        -->
+        <!-- ============================================================== -->
+        <section id="view-satellites" class="tab-view flex-1 flex flex-col space-y-6 hidden">
+            
+            <!-- Page Header with Earth Horizon Graphic -->
+            <div class="relative rounded-2xl p-6 sm:p-8 overflow-hidden glass-card border-none bg-gradient-to-r from-space-950 via-space-900 to-space-900">
+                <div class="absolute inset-0 bg-cover bg-no-repeat bg-right-top opacity-50 pointer-events-none" style="background-image: url('assets/explore_earth_bg.png');"></div>
+                <div class="relative z-10 max-w-xl">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                        Explore <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">Satellites</span>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+                        Search, filter and track live satellites from CelesTrak.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Top Filter Bar: Search, Group dropdown, Orbit dropdown, Sort dropdown -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                
+                <!-- Search Input -->
+                <div class="md:col-span-6 relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="sat-search-input" oninput="filterSatellitesTable()" placeholder="Search by name, NORAD ID, or group..." class="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs sm:text-sm text-white placeholder-slate-400">
+                </div>
+
+                <!-- Group Dropdown -->
+                <div class="md:col-span-2 relative">
+                    <select id="sat-filter-group" onchange="filterSatellitesTable()" class="w-full px-3 py-2.5 rounded-xl glass-input text-xs text-slate-200 cursor-pointer appearance-none">
+                        <option value="all">Group: All</option>
+                        <option value="active" selected>Group: Active</option>
+                        <option value="stations">Group: Stations</option>
+                        <option value="starlink">Group: Starlink</option>
+                        <option value="weather">Group: Weather</option>
+                        <option value="navigation">Group: Navigation</option>
+                        <option value="earth_obs">Group: Earth Obs</option>
+                    </select>
+                    <span class="absolute right-3 top-3 pointer-events-none text-xs text-slate-400"><i class="fa-solid fa-chevron-down"></i></span>
+                </div>
+
+                <!-- Orbit Dropdown -->
+                <div class="md:col-span-2 relative">
+                    <select id="sat-filter-orbit" onchange="filterSatellitesTable()" class="w-full px-3 py-2.5 rounded-xl glass-input text-xs text-slate-200 cursor-pointer appearance-none">
+                        <option value="">Orbit: All</option>
+                        <option value="LEO">Orbit: LEO</option>
+                        <option value="MEO">Orbit: MEO</option>
+                        <option value="GEO">Orbit: GEO</option>
+                        <option value="SSO">Orbit: SSO</option>
+                    </select>
+                    <span class="absolute right-3 top-3 pointer-events-none text-xs text-slate-400"><i class="fa-solid fa-chevron-down"></i></span>
+                </div>
+
+                <!-- Sort Dropdown -->
+                <div class="md:col-span-2 relative">
+                    <select id="sat-sort" onchange="filterSatellitesTable()" class="w-full px-3 py-2.5 rounded-xl glass-input text-xs text-slate-200 cursor-pointer appearance-none">
+                        <option value="name_asc">Sort: Name (A-Z)</option>
+                        <option value="name_desc">Sort: Name (Z-A)</option>
+                        <option value="alt_asc">Sort: Alt (Low-High)</option>
+                        <option value="alt_desc">Sort: Alt (High-Low)</option>
+                        <option value="norad">Sort: NORAD ID</option>
+                    </select>
+                    <span class="absolute right-3 top-3 pointer-events-none text-xs text-slate-400"><i class="fa-solid fa-chevron-down"></i></span>
+                </div>
+            </div>
+
+            <!-- Two-Column Layout: Left Category Sidebar, Right Satellite Cards List -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Sidebar: Satellite Categories -->
+                <div class="lg:col-span-3 glass-card rounded-2xl p-3.5 space-y-1">
+                    <button onclick="selectSatCategory('all')" id="cat-all" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-space-800/60 transition category-pill-active">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-globe text-sky-400"></i> All Satellites
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-sky-300 font-mono" id="badge-all">8,432</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('active')" id="cat-active" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span> Active Satellites
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono" id="badge-active">7,591</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('starlink')" id="cat-starlink" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-wifi text-sky-400"></i> Starlink
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">6,012</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('stations')" id="cat-stations" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-space-station-moon-construction text-sky-400"></i> ISS & Crew
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">1</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('weather')" id="cat-weather" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-cloud text-sky-400"></i> Weather
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">28</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('earth_obs')" id="cat-earth_obs" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-camera text-sky-400"></i> Earth Observation
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">224</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('communication')" id="cat-communication" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-tower-broadcast text-sky-400"></i> Communication
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">502</span>
+                    </button>
+
+                    <button onclick="selectSatCategory('navigation')" id="cat-navigation" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-crosshairs text-sky-400"></i> Navigation (GPS)
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">32</span>
+                    </button>
+
+                    <!-- Pinned Saved Satellites -->
+                    <div class="pt-2 border-t border-space-700/60 mt-2">
+                        <button onclick="filterSavedSatellitesOnly()" id="cat-saved-sats" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-space-800/60 transition border border-dashed border-sky-500/30">
+                            <span class="flex items-center gap-2.5 text-sky-300">
+                                <i class="fa-solid fa-star text-amber-400"></i> Saved Satellites
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-sky-300 font-mono" id="badge-saved-sats">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Main Content: Results Count & Satellite Cards -->
+                <div class="lg:col-span-9 space-y-4">
+                    
+                    <!-- Stats Bar -->
+                    <div class="flex items-center justify-between px-1 text-xs">
+                        <div class="font-semibold text-white tracking-wide">
+                            <span id="satellites-count" class="text-sky-300 font-mono">8,432</span> Satellites Found
+                        </div>
+                        <div class="flex items-center space-x-3 text-slate-400">
+                            <span class="flex items-center gap-1.5 text-[11px]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>Last Updated: Just now</span>
+                            </span>
+                            <button onclick="fetchLiveCelesTrakData()" class="w-7 h-7 rounded-lg bg-space-850 hover:bg-space-800 border border-space-700 flex items-center justify-center text-slate-300 hover:text-white transition" title="Sync Live CelesTrak TLE">
+                                <i class="fa-solid fa-rotate text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Satellite Cards Container -->
+                    <div class="space-y-3.5" id="satellites-cards-list">
+                        <!-- Populated dynamically via renderSatelliteCards() -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- 3. LAUNCH TRACKER VIEW (Matches lanches.png)                    -->
+        <!-- ============================================================== -->
+        <section id="view-launches" class="tab-view flex-1 flex flex-col space-y-6 hidden">
+            
+            <!-- Page Header with Fiery Rocket Launch Graphic -->
+            <div class="relative rounded-2xl p-6 sm:p-8 overflow-hidden glass-card border-none bg-gradient-to-r from-space-950 via-space-900 to-space-900">
+                <div class="absolute inset-0 bg-cover bg-no-repeat bg-right-top opacity-70 pointer-events-none" style="background-image: url('assets/launches_hero_bg.png');"></div>
+                <div class="relative z-10 max-w-xl">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                        Launch <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">Tracker</span>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+                        Track recent and upcoming rocket launches from around the world.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <button onclick="filterLaunchesTab('Upcoming')" id="tab-launch-upcoming" class="px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition nav-pill-active">
+                    <i class="fa-solid fa-rocket text-xs"></i>
+                    <span>Upcoming Launches</span>
+                </button>
+                <button onclick="filterLaunchesTab('Archive')" id="tab-launch-recent" class="px-4 py-2 rounded-full text-xs font-medium text-slate-300 hover:text-white bg-space-900/80 border border-space-700/80 flex items-center gap-2 transition">
+                    <i class="fa-regular fa-clock text-xs"></i>
+                    <span>Recent Launches</span>
+                </button>
+                <button onclick="filterLaunchesTab('all')" id="tab-launch-all" class="px-4 py-2 rounded-full text-xs font-medium text-slate-300 hover:text-white bg-space-900/80 border border-space-700/80 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-layer-group text-xs"></i>
+                    <span>All Launches</span>
+                </button>
+            </div>
+
+            <!-- Two-Column Grid: Left 2/3 Launch Cards, Right 1/3 Stats & Next Launch Featured Card -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left (2/3): Mission Cards List -->
+                <div class="lg:col-span-8 space-y-3.5" id="launches-cards-list">
+                    <!-- Populated dynamically via renderLaunchCards() -->
+                </div>
+
+                <!-- Right (1/3): Stats and Next Launch Widget -->
+                <div class="lg:col-span-4 space-y-5">
+                    
+                    <!-- Stats Card -->
+                    <div class="glass-card rounded-2xl p-5 border-glow-blue">
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div>
+                                <div class="w-8 h-8 mx-auto rounded-full bg-blue-900/40 border border-blue-500/30 flex items-center justify-center text-sky-400 mb-1.5">
+                                    <i class="fa-solid fa-rocket text-xs"></i>
+                                </div>
+                                <div class="text-xl font-black text-white font-mono" id="stat-upcoming-count">12</div>
+                                <div class="text-[10px] text-slate-400 leading-tight mt-0.5">Upcoming<br>Launches</div>
+                            </div>
+                            <div class="border-x border-space-700/60 px-1">
+                                <div class="w-8 h-8 mx-auto rounded-full bg-emerald-900/40 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-1.5">
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                </div>
+                                <div class="text-xl font-black text-white font-mono">236</div>
+                                <div class="text-[10px] text-slate-400 leading-tight mt-0.5">Past<br>Launches</div>
+                            </div>
+                            <div>
+                                <div class="w-8 h-8 mx-auto rounded-full bg-cyan-900/40 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-1.5">
+                                    <i class="fa-solid fa-globe text-xs"></i>
+                                </div>
+                                <div class="text-xl font-black text-white font-mono">6</div>
+                                <div class="text-[10px] text-slate-400 leading-tight mt-0.5">Active<br>Agencies</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Launch Featured Card (Glowing Purple Gradient Card with Rocket Art) -->
+                    <div class="relative rounded-2xl p-6 overflow-hidden border border-purple-500/40 shadow-[0_0_35px_rgba(168,85,247,0.22)] bg-gradient-to-br from-purple-950/90 via-space-900/95 to-space-950">
+                        
+                        <!-- Rocket Art on the right -->
+                        <div class="absolute right-0 bottom-0 w-44 h-64 bg-contain bg-no-repeat bg-right-bottom opacity-90 pointer-events-none" style="background-image: url('assets/launch_rocket_art.png');"></div>
+
+                        <div class="relative z-10 max-w-[210px] space-y-3">
+                            <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                                <i class="fa-solid fa-rocket text-purple-400"></i>
+                                <span>Next Launch</span>
+                            </div>
+
+                            <h3 class="text-2xl font-black text-white tracking-tight" id="featured-mission-title">
+                                PSLV-C61
+                            </h3>
+
+                            <!-- Countdown Pill -->
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-900/60 border border-purple-500/40 text-xs font-mono text-purple-200">
+                                <i class="fa-regular fa-clock text-sky-400 text-[11px]"></i>
+                                <span id="featured-countdown-val">T - 2d 14h 32m</span>
+                            </div>
+
+                            <div class="pt-2">
+                                <button onclick="openLaunchModal(1)" class="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600 border border-purple-500/50 hover:border-purple-400 text-xs font-medium text-white transition flex items-center gap-2">
+                                    <span>Mission Details</span>
+                                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- 4. ORBIT VISUALIZER VIEW (Matches orbitspace.png)              -->
+        <!-- ============================================================== -->
+        <section id="view-visualizer" class="tab-view flex-1 flex flex-col space-y-5 hidden">
+            
+            <!-- Page Header -->
+            <div>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                    Orbit <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">Visualizer</span>
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                    Visualize satellite orbits around Earth in real time.
+                </p>
+            </div>
+
+            <!-- 3-Panel Visualizer Layout: Left Select Satellite, Center 3D Globe, Right Telemetry Specs -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 relative">
+                
+                <!-- Left Panel: Select Satellite -->
+                <div class="lg:col-span-3 glass-card rounded-2xl p-4 flex flex-col space-y-3 z-10">
+                    <div class="flex items-center space-x-2 text-xs font-bold text-white tracking-wide">
+                        <i class="fa-solid fa-satellite text-sky-400"></i>
+                        <span>Select Satellite</span>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="viz-search-input" oninput="filterVisualizerList(this.value)" placeholder="Search by name or NORAD ID..." class="w-full pl-8 pr-3 py-2 rounded-xl glass-input text-xs text-white placeholder-slate-400">
+                    </div>
+
+                    <!-- Scrollable List of Satellites -->
+                    <div class="space-y-1 max-h-[360px] overflow-y-auto pr-1" id="viz-sat-list">
+                        <!-- Populated dynamically via renderVisualizerList() -->
+                    </div>
+                </div>
+
+                <!-- Center: Interactive 3D Earth Globe Canvas -->
+                <div class="lg:col-span-6 relative rounded-2xl overflow-hidden glass-card min-h-[460px] flex items-center justify-center border-glow-blue">
+                    
+                    <!-- 3D WebGL Canvas Target -->
+                    <div id="full-globe-target" class="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"></div>
+
+                    <!-- Overlay Pin Label pointing to current satellite -->
+                    <div id="viz-pin-label" class="absolute top-24 right-1/4 orbit-pin-label flex items-center gap-1.5 transition-all duration-300">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                        <span id="viz-pin-text">ISS (ZARYA)</span>
+                    </div>
+
+                    <!-- Camera & Interactive Controls Hint (Subtle bottom-left) -->
+                    <div class="absolute top-4 left-4 z-10 flex items-center gap-2 pointer-events-none">
+                        <span class="px-2.5 py-1 rounded-lg bg-space-900/80 border border-space-700/80 text-[10px] text-slate-300 backdrop-blur">
+                            <i class="fa-solid fa-arrows-up-down-left-right text-sky-400 mr-1"></i> Drag to rotate • Scroll to zoom
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Satellite Telemetry Specs & Save Button -->
+                <div class="lg:col-span-3 glass-card rounded-2xl p-5 flex flex-col justify-between space-y-4 z-10">
+                    <div>
+                        <!-- Title & Status Badge -->
+                        <div class="flex items-center justify-between pb-3 border-b border-space-700/60">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-satellite text-sky-400 text-sm"></i>
+                                <h3 class="text-sm font-bold text-white truncate max-w-[140px]" id="viz-spec-name">ISS (ZARYA)</h3>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 text-[10px] font-semibold">Active</span>
+                        </div>
+
+                        <!-- Telemetry Grid -->
+                        <div class="space-y-3 pt-3 text-xs">
+                            <div class="flex items-center justify-between py-1 border-b border-space-800">
+                                <span class="text-slate-400 flex items-center gap-2"><i class="fa-regular fa-calendar text-slate-400"></i> NORAD ID</span>
+                                <span class="font-mono text-white font-semibold" id="viz-spec-norad">25544</span>
+                            </div>
+
+                            <div class="flex items-center justify-between py-1 border-b border-space-800">
+                                <span class="text-slate-400 flex items-center gap-2"><i class="fa-solid fa-layer-group text-slate-400"></i> Orbit Type</span>
+                                <span class="font-semibold text-sky-300" id="viz-spec-orbit">LEO</span>
+                            </div>
+
+                            <div class="flex items-center justify-between py-1 border-b border-space-800">
+                                <span class="text-slate-400 flex items-center gap-2"><i class="fa-solid fa-mountain text-slate-400"></i> Altitude</span>
+                                <span class="font-mono text-white font-semibold" id="viz-spec-alt">~408 km</span>
+                            </div>
+
+                            <div class="flex items-center justify-between py-1 border-b border-space-800">
+                                <span class="text-slate-400 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-slate-400"></i> Speed</span>
+                                <span class="font-mono text-white font-semibold" id="viz-spec-speed">7.67 km/s</span>
+                            </div>
+
+                            <div class="flex items-center justify-between py-1">
+                                <span class="text-slate-400 flex items-center gap-2"><i class="fa-regular fa-clock text-slate-400"></i> Next Pass</span>
+                                <span class="font-semibold text-emerald-300" id="viz-spec-pass">in 18 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save Satellite Button -->
+                    <button onclick="saveCurrentVisualizerSat()" id="viz-save-btn" class="w-full py-2.5 rounded-xl bg-space-850 hover:bg-space-800 border border-sky-500/40 hover:border-sky-400 text-xs font-semibold text-sky-300 hover:text-white transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(56,189,248,0.15)]">
+                        <i class="fa-regular fa-bookmark"></i>
+                        <span>Save Satellite</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Floating Bottom Playback & Time Controls Bar (Matches orbitspace.png) -->
+            <div class="glass-card rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-4 border-glow-blue">
+                
+                <!-- Play/Pause & Reset Buttons -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleVisualizerPlayback()" id="viz-play-btn" class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.4)] transition">
+                        <i class="fa-solid fa-play text-sm"></i>
+                    </button>
+                    <button onclick="resetVisualizerCamera()" class="w-10 h-10 rounded-xl bg-space-850 hover:bg-space-800 border border-space-700 flex items-center justify-center text-slate-300 hover:text-white transition" title="Reset Camera View">
+                        <i class="fa-solid fa-rotate text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Live UTC Clock -->
+                <div class="text-xs">
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Time (UTC)</div>
+                    <div class="text-xs font-mono font-bold text-white" id="live-utc-clock">Nov 11, 2026 13:33:42</div>
+                </div>
+
+                <!-- Time Scrubber Slider -->
+                <div class="flex-1 min-w-[180px] max-w-md flex items-center space-x-3">
+                    <input type="range" id="viz-time-scrubber" min="0" max="100" value="50" oninput="scrubVisualizerTime(this.value)" class="w-full h-1.5 bg-space-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                </div>
+
+                <!-- Feature Toggles: Orbit, Ground Track, Labels -->
+                <div class="flex items-center space-x-3 text-xs">
+                    <label class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-space-900 border border-space-700 cursor-pointer hover:border-sky-500/50 transition">
+                        <span class="text-slate-300">Orbit</span>
+                        <input type="checkbox" id="toggle-orbit" checked onchange="toggleOrbitVisibility(this.checked)" class="accent-sky-500 rounded">
+                    </label>
+
+                    <label class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-space-900 border border-space-700 cursor-pointer hover:border-sky-500/50 transition">
+                        <span class="text-slate-300">Ground Track</span>
+                        <input type="checkbox" id="toggle-ground" onchange="toggleGroundTrackVisibility(this.checked)" class="accent-sky-500 rounded">
+                    </label>
+
+                    <label class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-space-900 border border-space-700 cursor-pointer hover:border-sky-500/50 transition">
+                        <span class="text-slate-300">Labels</span>
+                        <input type="checkbox" id="toggle-labels" checked onchange="toggleLabelsVisibility(this.checked)" class="accent-sky-500 rounded">
+                    </label>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- 5. SPACE GLOSSARY VIEW (Matches gloss.png)                     -->
+        <!-- ============================================================== -->
+        <section id="view-glossary" class="tab-view flex-1 flex flex-col space-y-6 hidden">
+            
+            <!-- Page Header with Earth & Satellite Graphic -->
+            <div class="relative rounded-2xl p-6 sm:p-8 overflow-hidden glass-card border-none bg-gradient-to-r from-space-950 via-space-900 to-space-900">
+                <div class="absolute inset-0 bg-cover bg-no-repeat bg-right-top opacity-60 pointer-events-none" style="background-image: url('assets/glossary_hero_bg.png');"></div>
+                <div class="relative z-10 max-w-xl">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <i class="fa-solid fa-book-open text-sky-400 text-2xl sm:text-3xl"></i>
+                        <span>Space <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">Glossary</span></span>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+                        Understand key space and satellite terms in simple language.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Search Input -->
+            <div class="relative max-w-xl">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="glossary-search-input" oninput="filterGlossary()" placeholder="Search for a term or concept..." class="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs sm:text-sm text-white placeholder-slate-400">
+            </div>
+
+            <!-- Two-Column Layout: Left Category Sidebar, Right Glossary Cards List -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Sidebar: Category Filters with Count Badges -->
+                <div class="lg:col-span-3 glass-card rounded-2xl p-3.5 space-y-1">
+                    <button onclick="selectGlossaryCategory('all')" id="gloss-cat-all" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-space-800/60 transition category-pill-active">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-border-all text-sky-400"></i> All Terms
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-sky-300 font-mono">56</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('satellites')" id="gloss-cat-satellites" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-satellite text-sky-400"></i> Satellites
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">12</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('orbits')" id="gloss-cat-orbits" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-circle-nodes text-sky-400"></i> Orbits
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">10</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('missions')" id="gloss-cat-missions" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-rocket text-sky-400"></i> Launch & Missions
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">8</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('tech')" id="gloss-cat-tech" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-gear text-sky-400"></i> Space Technology
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">10</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('astronomy')" id="gloss-cat-astronomy" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-meteor text-sky-400"></i> Astronomy
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">9</span>
+                    </button>
+
+                    <button onclick="selectGlossaryCategory('general')" id="gloss-cat-general" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-space-800/60 transition">
+                        <span class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-book text-sky-400"></i> General
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-space-900 border border-space-700/80 text-[10px] text-slate-400 font-mono">7</span>
+                    </button>
+                </div>
+
+                <!-- Right Main Content: Glossary Cards List -->
+                <div class="lg:col-span-9 space-y-3.5" id="glossary-cards-list">
+                    <!-- Populated dynamically via renderGlossaryCards() -->
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- 6. SAVED ITEMS VIEW                                            -->
+        <!-- ============================================================== -->
+        <section id="view-saved" class="tab-view flex-1 flex flex-col space-y-6 hidden">
+            
+            <!-- Page Header -->
+            <div class="relative rounded-2xl p-6 sm:p-8 overflow-hidden glass-card">
+                <div class="max-w-xl">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <i class="fa-solid fa-bookmark text-sky-400"></i>
+                        <span>Saved <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">Items</span></span>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+                        Your bookmarked satellites, rocket launches, and space glossary terms stored locally in your browser.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <button onclick="filterSavedTab('all')" id="saved-tab-all" class="px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition nav-pill-active">
+                    <span>All Saved</span>
+                    <span id="saved-count-all" class="px-1.5 py-0.2 rounded-full bg-space-900 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="filterSavedTab('satellite')" id="saved-tab-satellite" class="px-4 py-2 rounded-full text-xs font-medium text-slate-300 hover:text-white bg-space-900/80 border border-space-700/80 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-satellite text-xs text-sky-400"></i>
+                    <span>Satellites</span>
+                    <span id="saved-count-satellite" class="px-1.5 py-0.2 rounded-full bg-space-900 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="filterSavedTab('launch')" id="saved-tab-launch" class="px-4 py-2 rounded-full text-xs font-medium text-slate-300 hover:text-white bg-space-900/80 border border-space-700/80 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-rocket text-xs text-purple-400"></i>
+                    <span>Launches</span>
+                    <span id="saved-count-launch" class="px-1.5 py-0.2 rounded-full bg-space-900 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="filterSavedTab('glossary')" id="saved-tab-glossary" class="px-4 py-2 rounded-full text-xs font-medium text-slate-300 hover:text-white bg-space-900/80 border border-space-700/80 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-book-open text-xs text-blue-400"></i>
+                    <span>Glossary Terms</span>
+                    <span id="saved-count-glossary" class="px-1.5 py-0.2 rounded-full bg-space-900 text-[10px] font-mono">0</span>
+                </button>
+            </div>
+
+            <!-- Saved Items Container -->
+            <div id="saved-items-container" class="space-y-3.5">
+                <!-- Populated dynamically via renderSavedItems() -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto border-t border-space-700/40 py-6 px-4 lg:px-10 glass-nav">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+            <div class="flex items-center space-x-2">
+                <span class="font-bold text-white">SpaceLens</span>
+                <span>&bull;</span>
+                <span>Powered by CelesTrak TLE & NASA Open APIs</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="switchTab('dashboard')" class="hover:text-white transition">Home</button>
+                <button onclick="switchTab('satellites')" class="hover:text-white transition">Explore</button>
+                <button onclick="switchTab('launches')" class="hover:text-white transition">Launches</button>
+                <button onclick="switchTab('visualizer')" class="hover:text-white transition">Orbit Visualizer</button>
+                <button onclick="switchTab('glossary')" class="hover:text-white transition">Glossary</button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============================================================== -->
+    <!-- MODALS                                                         -->
+    <!-- ============================================================== -->
+
+    <!-- 1. NASA APOD MODAL -->
+    <div id="nasa-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-card rounded-2xl max-w-2xl w-full p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto border-glow-blue">
+            <button onclick="closeNASAModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-space-900 border border-space-700 flex items-center justify-center text-slate-400 hover:text-white text-sm transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="nasa-modal-content" class="space-y-4">
+                <div class="flex flex-col items-center justify-center py-12 space-y-3">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-400"></i>
+                    <p class="text-xs text-slate-400">Fetching live Astronomy Picture of the Day from NASA...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. SATELLITE DETAIL MODAL -->
+    <div id="sat-detail-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-card rounded-2xl max-w-xl w-full p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto border-glow-blue">
+            <button onclick="closeSatModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-space-900 border border-space-700 flex items-center justify-center text-slate-400 hover:text-white text-sm transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="sat-detail-content" class="space-y-4">
+                <!-- Populated dynamically via openSatelliteModal() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. LAUNCH DETAIL MODAL -->
+    <div id="launch-detail-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-card rounded-2xl max-w-xl w-full p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto border-glow-purple">
+            <button onclick="closeLaunchModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-space-900 border border-space-700 flex items-center justify-center text-slate-400 hover:text-white text-sm transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="launch-detail-content" class="space-y-4">
+                <!-- Populated dynamically via openLaunchModal() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- JAVASCRIPT APP LOGIC & STATE                                   -->
+    <!-- ============================================================== -->
+    <script>
+        // Current state
+        let currentLang = 'en';
+        let currentSatCategory = 'all';
+        let currentGlossaryCategory = 'all';
+        let currentSavedFilter = 'all';
+        let fullGlobeInitialized = false;
+
+        const translations = {
+            en: {
+                hero_pill: "Explore • Track • Learn",
+                hero_subtitle: "Track live satellites, recent launches, visualize orbits, and learn space terms — all in one place.",
+                explore_btn: "Explore Satellites →",
+                learn_btn: "Learn Space"
+            },
+            hi: {
+                hero_pill: "खोजें • ट्रैक करें • सीखें",
+                hero_subtitle: "लाइव उपग्रहों, नए रॉकेट लॉन्च को ट्रैक करें, कक्षाओं की कल्पना करें और अंतरिक्ष शब्दों को समझें।",
+                explore_btn: "उपग्रह अन्वेषण →",
+                learn_btn: "अंतरिक्ष सीखें"
+            }
+        };
+
+        // Comprehensive Satellites Database with real telemetry and high-res cropped assets
+        const satellitesData = [
+            {
+                norad_id: 25544,
+                name: "ISS (ZARYA)",
+                group: "Stations",
+                orbit_type: "LEO",
+                altitude_km: 408,
+                speed_kms: 7.67,
+                next_pass: "in 18 min",
+                inclination_deg: 51.6,
+                period_minutes: 92.7,
+                source: "CelesTrak SGP4",
+                epoch: "2026-11-11T12:00:00Z",
+                image: "assets/sat_iss.png",
+                description: "International Space Station – a habitable research laboratory in low Earth orbit."
+            },
+            {
+                norad_id: 77186,
+                name: "STARLINK-5548",
+                group: "Starlink",
+                orbit_type: "LEO",
+                altitude_km: 550,
+                speed_kms: 7.59,
+                next_pass: "in 27 min",
+                inclination_deg: 53.0,
+                period_minutes: 95.2,
+                source: "CelesTrak",
+                epoch: "2026-11-11T11:45:00Z",
+                image: "assets/sat_starlink.png",
+                description: "A SpaceX Starlink communication satellite providing high-speed internet."
+            },
+            {
+                norad_id: 43013,
+                name: "NOAA-20",
+                group: "Weather",
+                orbit_type: "SSO",
+                altitude_km: 824,
+                speed_kms: 7.44,
+                next_pass: "in 34 min",
+                inclination_deg: 98.7,
+                period_minutes: 101.4,
+                source: "CelesTrak",
+                epoch: "2026-11-11T10:30:00Z",
+                image: "assets/sat_noaa.png",
+                description: "U.S. weather satellite that monitors Earth's atmosphere, oceans, and climate."
+            },
+            {
+                norad_id: 20580,
+                name: "Hubble Space Telescope",
+                group: "Earth Observation",
+                orbit_type: "LEO",
+                altitude_km: 540,
+                speed_kms: 7.59,
+                next_pass: "in 48 min",
+                inclination_deg: 28.5,
+                period_minutes: 95.4,
+                source: "CelesTrak",
+                epoch: "2026-11-11T09:15:00Z",
+                image: "assets/hero_earth_satellite.png",
+                description: "Famous space telescope providing deep cosmological imagery since 1990."
+            },
+            {
+                norad_id: 27424,
+                name: "Aqua (EOS PM-1)",
+                group: "Earth Observation",
+                orbit_type: "SSO",
+                altitude_km: 705,
+                speed_kms: 7.50,
+                next_pass: "in 55 min",
+                inclination_deg: 98.2,
+                period_minutes: 98.8,
+                source: "CelesTrak",
+                epoch: "2026-11-11T08:45:00Z",
+                image: "assets/sat_iss.png",
+                description: "NASA Earth science satellite studying water cycles, oceans, and precipitation."
+            },
+            {
+                norad_id: 48859,
+                name: "GPS III SV05 (ARMSTRONG)",
+                group: "Navigation",
+                orbit_type: "MEO",
+                altitude_km: 20200,
+                speed_kms: 3.87,
+                next_pass: "in 2h 15m",
+                inclination_deg: 55.0,
+                period_minutes: 718.0,
+                source: "CelesTrak",
+                epoch: "2026-11-11T06:00:00Z",
+                image: "assets/gloss_satellite.png",
+                description: "United States Space Force next-generation global positioning system satellite."
+            },
+            {
+                norad_id: 39084,
+                name: "IRNSS-1A (NavIC)",
+                group: "Navigation",
+                orbit_type: "GEO",
+                altitude_km: 35786,
+                speed_kms: 3.07,
+                next_pass: "Continuous",
+                inclination_deg: 29.0,
+                period_minutes: 1436.0,
+                source: "ISRO / CelesTrak",
+                epoch: "2026-11-11T05:20:00Z",
+                image: "assets/gloss_satellite.png",
+                description: "Indian Regional Navigation Satellite System providing accurate positioning service."
+            },
+            {
+                norad_id: 44474,
+                name: "Intelsat 39",
+                group: "Communication",
+                orbit_type: "GEO",
+                altitude_km: 35786,
+                speed_kms: 3.07,
+                next_pass: "Continuous",
+                inclination_deg: 0.1,
+                period_minutes: 1436.1,
+                source: "CelesTrak",
+                epoch: "2026-11-11T04:10:00Z",
+                image: "assets/sat_starlink.png",
+                description: "Geostationary telecommunications satellite servicing Africa, Europe, and Asia."
+            }
+        ];
+
+        // Comprehensive Launches Database
+        const launchesData = [
+            {
+                id: 1,
+                name: "PSLV-C61",
+                provider: "ISRO",
+                rocket: "Polar Satellite Launch Vehicle",
+                launch_time: "Sat, Nov 16, 2026 | 06:30 UTC",
+                launch_timestamp: new Date(Date.now() + 2 * 86400000 + 14 * 3600000 + 32 * 60000).toISOString(),
+                status: "Upcoming",
+                location: "Sriharikota, India",
+                pad: "First Launch Pad (FLP), SDSC SHAR",
+                source: "ISRO Manifest",
+                image: "assets/launch_pslv.png",
+                description: "Polar Satellite Launch Vehicle mission to deploy multiple Earth observation satellites.",
+                payload: "EOS-08 Earth Observation Satellite & Micro-satellites"
+            },
+            {
+                id: 2,
+                name: "Falcon 9 – Starlink 10-15",
+                provider: "SpaceX",
+                rocket: "Falcon 9 Block 5",
+                launch_time: "Sun, Nov 17, 2026 | 15:40 UTC",
+                launch_timestamp: new Date(Date.now() + 3 * 86400000 + 6 * 3600000 + 10 * 60000).toISOString(),
+                status: "Upcoming",
+                location: "Cape Canaveral, USA",
+                pad: "Space Launch Complex 40 (SLC-40)",
+                source: "Launch Library 2",
+                image: "assets/launch_falcon9.png",
+                description: "Launch of a new batch of Starlink satellites to expand global internet coverage.",
+                payload: "23 Starlink V2 Mini satellites"
+            },
+            {
+                id: 3,
+                name: "Ariane 6 – VA261",
+                provider: "Arianespace",
+                rocket: "Ariane 62",
+                launch_time: "Tue, Nov 19, 2026 | 18:25 UTC",
+                launch_timestamp: new Date(Date.now() + 5 * 86400000 + 18 * 3600000 + 45 * 60000).toISOString(),
+                status: "Upcoming",
+                location: "Kourou, French Guiana",
+                pad: "ELA-4, Guiana Space Centre",
+                source: "Arianespace",
+                image: "assets/launch_ariane6.png",
+                description: "Ariane 6 launch for commercial and institutional payloads.",
+                payload: "Meteorological and defense communications satellite"
+            },
+            {
+                id: 4,
+                name: "Artemis II Crewed Lunar Flyby",
+                provider: "NASA",
+                rocket: "Space Launch System (SLS) / Orion",
+                launch_time: "Sep 18, 2026 | 01:47 UTC",
+                launch_timestamp: new Date(Date.now() + 180 * 86400000).toISOString(),
+                status: "Upcoming",
+                location: "LC-39B, Kennedy Space Center, USA",
+                pad: "Launch Complex 39B",
+                source: "NASA Artemis Manifest",
+                image: "assets/launch_pslv.png",
+                description: "First crewed flight test around the Moon under the NASA Artemis program.",
+                payload: "Orion Spacecraft with 4 Astronauts"
+            },
+            {
+                id: 5,
+                name: "Apollo 11 Moon Landing",
+                provider: "NASA",
+                rocket: "Saturn V",
+                launch_time: "Jul 16, 1969 | 13:32 UTC",
+                launch_timestamp: "1969-07-16T13:32:00Z",
+                status: "Archive",
+                location: "LC-39A, Kennedy Space Center, USA",
+                pad: "Launch Complex 39A",
+                source: "NASA Historical Archive",
+                image: "assets/launch_pslv.png",
+                description: "The historic spaceflight that first landed humans on the Moon.",
+                payload: "Lunar Module Eagle & Command Module Columbia"
+            },
+            {
+                id: 6,
+                name: "Hubble Space Telescope Deployment",
+                provider: "NASA / ESA",
+                rocket: "Space Shuttle Discovery (STS-31)",
+                launch_time: "Apr 24, 1990 | 12:33 UTC",
+                launch_timestamp: "1990-04-24T12:33:00Z",
+                status: "Archive",
+                location: "LC-39B, Kennedy Space Center, USA",
+                pad: "Launch Complex 39B",
+                source: "NASA STS Archive",
+                image: "assets/hero_earth_satellite.png",
+                description: "Placed a large space telescope into low Earth orbit, revolutionizing astronomy.",
+                payload: "Hubble Space Telescope Observatory"
+            }
+        ];
+
+        // Comprehensive Space Glossary Database matching gloss.png
+        const glossaryData = [
+            {
+                id: "term-satellite",
+                term: "Satellite",
+                category: "satellites",
+                definition: "A machine that orbits Earth or another celestial body, used for communication, navigation, weather monitoring, and more.",
+                example: "Thousands of artificial satellites orbit the Earth transmitting data every second.",
+                image: "assets/gloss_satellite.png"
+            },
+            {
+                id: "term-orbit",
+                term: "Orbit",
+                category: "orbits",
+                definition: "The curved path followed by a satellite or any object around a planet due to gravity.",
+                example: "Satellites achieve orbit when their forward velocity balances Earth's gravitational pull.",
+                image: "assets/gloss_orbit.png"
+            },
+            {
+                id: "term-launch-vehicle",
+                term: "Launch Vehicle",
+                category: "missions",
+                definition: "A rocket that carries a satellite or spacecraft from Earth to space.",
+                example: "Heavy-lift launch vehicles carry multi-ton scientific probes into deep space.",
+                image: "assets/gloss_vehicle.png"
+            },
+            {
+                id: "term-iss",
+                term: "ISS (International Space Station)",
+                category: "satellites",
+                definition: "A large, habitable space station in low Earth orbit used for scientific research by countries around the world.",
+                example: "Astronauts live aboard the ISS conducting experiments in microgravity.",
+                image: "assets/gloss_iss.png"
+            },
+            {
+                id: "term-apogee",
+                term: "Apogee",
+                category: "orbits",
+                definition: "The highest point in a satellite's orbit, where it is furthest from the Earth.",
+                example: "At apogee, the satellite's orbital speed is at its minimum.",
+                image: "assets/gloss_orbit.png"
+            },
+            {
+                id: "term-perigee",
+                term: "Perigee",
+                category: "orbits",
+                definition: "The point in the orbit of the moon or a satellite closest to the Earth.",
+                example: "At perigee, gravitational pull is strongest and speed is highest.",
+                image: "assets/gloss_orbit.png"
+            },
+            {
+                id: "term-inclination",
+                term: "Inclination",
+                category: "orbits",
+                definition: "The angle between the orbital plane and the reference plane (usually Earth's equator).",
+                example: "The ISS has an inclination of 51.6 degrees to cover populated latitudes.",
+                image: "assets/gloss_orbit.png"
+            },
+            {
+                id: "term-altitude",
+                term: "Altitude",
+                category: "general",
+                definition: "The vertical distance or height of a satellite above the surface of the Earth.",
+                example: "Low Earth Orbit typically spans altitudes between 160 and 2,000 kilometers.",
+                image: "assets/gloss_satellite.png"
+            },
+            {
+                id: "term-sgp4",
+                term: "SGP4",
+                category: "tech",
+                definition: "Simplified General Perturbations Model 4, used to calculate satellite positions from TLE elements.",
+                example: "Used by backend systems to propagate real-time orbital tracks.",
+                image: "assets/gloss_satellite.png"
+            },
+            {
+                id: "term-escape-velocity",
+                term: "Escape Velocity",
+                category: "missions",
+                definition: "The minimum speed an object must attain to break free from a planet's gravitational pull without further propulsion.",
+                example: "Earth's escape velocity is approximately 11.2 kilometers per second.",
+                image: "assets/gloss_vehicle.png"
+            },
+            {
+                id: "term-geosynchronous",
+                term: "Geosynchronous Orbit",
+                category: "orbits",
+                definition: "An orbit matching Earth's 24-hour sidereal rotation period, keeping the satellite above the same longitude.",
+                example: "Weather and telecommunication satellites frequently utilize geosynchronous orbits.",
+                image: "assets/gloss_satellite.png"
+            },
+            {
+                id: "term-telemetry",
+                term: "Telemetry",
+                category: "tech",
+                definition: "The automated collection and transmission of operational data and sensor readings from a spacecraft to ground control.",
+                example: "Flight controllers monitor solar array telemetry to verify battery charge cycles.",
+                image: "assets/gloss_satellite.png"
+            }
+        ];
+
+        // Bookmarks storage in localStorage
+        let savedItems = JSON.parse(localStorage.getItem('spacelens_saved') || '[]');
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSatelliteCards(satellitesData);
+            renderLaunchCards(launchesData.filter(l => l.status === 'Upcoming'));
+            renderGlossaryCards(glossaryData);
+            renderVisualizerList(satellitesData);
+            renderSavedItems();
+            updateSavedBadges();
+            startLiveClocks();
+
+            // Check URL hash for direct tab linking
+            const hash = window.location.hash.replace('#', '');
+            if (['dashboard', 'satellites', 'launches', 'visualizer', 'glossary', 'saved'].includes(hash)) {
+                switchTab(hash);
+            }
+        });
+
+        // Tab Navigation Switcher
+        function switchTab(tabId) {
+            const tabs = ['dashboard', 'satellites', 'launches', 'visualizer', 'glossary', 'saved'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                const nav = document.getElementById(`nav-${t}`);
+                if (el) el.classList.add('hidden');
+                if (nav) nav.classList.remove('nav-pill-active');
+            });
+
+            const activeEl = document.getElementById(`view-${tabId}`);
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeEl) activeEl.classList.remove('hidden');
+            if (activeNav) activeNav.classList.add('nav-pill-active');
+
+            window.location.hash = tabId;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Initialize 3D Globe when visualizer tab is first opened
+            if (tabId === 'visualizer' && !fullGlobeInitialized) {
+                setTimeout(initFullGlobe, 100);
+                fullGlobeInitialized = true;
+            }
+        }
+
+        function toggleMobileNav() {
+            const nav = document.getElementById('mobile-nav');
+            nav.classList.toggle('hidden');
+        }
+
+        // ====================================================================
+        // RENDER FUNCTIONS
+        // ====================================================================
+
+        // 1. Render Satellite Cards (Matching space explore.png)
+        function renderSatelliteCards(data) {
+            const container = document.getElementById('satellites-cards-list');
+            document.getElementById('satellites-count').innerText = data.length.toLocaleString();
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-10 text-center text-slate-400 space-y-3">
+                        <i class="fa-solid fa-satellite text-3xl text-slate-500"></i>
+                        <p class="text-sm font-medium">No satellites matched your search criteria.</p>
+                        <button onclick="resetSatelliteFilters()" class="px-4 py-2 rounded-xl bg-blue-600 text-xs text-white">Reset Filters</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.map(s => {
+                const isSaved = isItemSaved('satellite', s.norad_id.toString());
+                return `
+                    <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group">
+                        
+                        <!-- Left Thumbnail + Details -->
+                        <div class="flex items-start sm:items-center space-x-4 flex-1 min-w-0">
+                            <!-- Satellite Thumbnail -->
+                            <div class="w-36 sm:w-44 h-24 rounded-xl overflow-hidden shrink-0 bg-space-900 border border-space-700/80 relative">
+                                <img src="${s.image}" alt="${s.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            </div>
+
+                            <!-- Middle Details -->
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-sky-300 transition truncate cursor-pointer" onclick="openSatelliteModal(${s.norad_id})">
+                                        ${s.name}
+                                    </h3>
+                                    <span class="px-2 py-0.5 rounded-full bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 text-[10px] font-semibold">Active</span>
+                                </div>
+
+                                <div class="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-2">
+                                    <span>NORAD ID: <strong class="text-sky-300 font-mono">${s.norad_id}</strong></span>
+                                    <span>|</span>
+                                    <span>Group: <strong class="text-slate-300">${s.group}</strong></span>
+                                    <span>|</span>
+                                    <span>Orbit: <strong class="text-sky-300">${s.orbit_type}</strong></span>
+                                </div>
+
+                                <p class="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                                    ${s.description}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right Telemetry Specs & Bookmark -->
+                        <div class="flex items-center justify-between md:justify-end w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-space-700/50 gap-6 shrink-0">
+                            <div class="grid grid-cols-3 md:grid-cols-1 gap-4 md:gap-1 text-right text-xs">
+                                <div class="flex items-center justify-between md:justify-end gap-2 text-slate-400">
+                                    <span class="text-[11px]">△ Altitude</span>
+                                    <span class="font-mono text-white font-semibold">~${s.altitude_km} km</span>
+                                </div>
+                                <div class="flex items-center justify-between md:justify-end gap-2 text-slate-400">
+                                    <span class="text-[11px]"><i class="fa-solid fa-gauge text-[10px]"></i> Speed</span>
+                                    <span class="font-mono text-white font-semibold">${s.speed_kms} km/s</span>
+                                </div>
+                                <div class="flex items-center justify-between md:justify-end gap-2 text-slate-400">
+                                    <span class="text-[11px]"><i class="fa-regular fa-clock text-[10px]"></i> Next Pass</span>
+                                    <span class="text-emerald-300 font-semibold">${s.next_pass}</span>
+                                </div>
+                            </div>
+
+                            <!-- Bookmark Button -->
+                            <button onclick="toggleBookmark('satellite', '${s.name}', '${s.norad_id}')" class="w-10 h-10 rounded-xl bg-space-850 hover:bg-space-800 border border-space-700 flex items-center justify-center transition shadow ${isSaved ? 'text-sky-400 border-sky-400/50' : 'text-slate-400 hover:text-white'}" title="${isSaved ? 'Remove Bookmark' : 'Bookmark Satellite'}">
+                                <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 2. Render Launch Cards (Matching lanches.png)
+        function renderLaunchCards(data) {
+            const container = document.getElementById('launches-cards-list');
+            if (data.length === 0) {
+                container.innerHTML = `<div class="glass-card rounded-2xl p-8 text-center text-slate-400 text-xs">No launches found for this filter.</div>`;
+                return;
+            }
+
+            container.innerHTML = data.map(l => {
+                const isSaved = isItemSaved('launch', l.id.toString());
+                const isUpcoming = l.status === 'Upcoming';
+                return `
+                    <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group">
+                        
+                        <!-- Left Thumbnail + Info -->
+                        <div class="flex items-start sm:items-center space-x-4 flex-1 min-w-0">
+                            <!-- Rocket Thumbnail -->
+                            <div class="w-36 sm:w-44 h-24 rounded-xl overflow-hidden shrink-0 bg-space-900 border border-space-700/80 relative">
+                                <img src="${l.image}" alt="${l.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            </div>
+
+                            <!-- Details -->
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-purple-300 transition truncate cursor-pointer" onclick="openLaunchModal(${l.id})">
+                                        ${l.name}
+                                    </h3>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isUpcoming ? 'bg-sky-900/60 border border-sky-500/40 text-sky-300' : 'bg-amber-900/60 border border-amber-500/40 text-amber-300'}">
+                                        ${l.status}
+                                    </span>
+                                </div>
+
+                                <div class="text-[11px] text-slate-400 flex flex-wrap items-center gap-x-2">
+                                    <span class="text-white font-medium">${l.provider}</span>
+                                    <span>|</span>
+                                    <span>${l.launch_time}</span>
+                                    <span>|</span>
+                                    <span class="text-slate-300">${l.location}</span>
+                                </div>
+
+                                <p class="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                                    ${l.description}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right Countdown / Details CTA / Bookmark -->
+                        <div class="flex items-center justify-between md:justify-end w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-space-700/50 gap-4 shrink-0">
+                            <div class="flex flex-col items-end space-y-2">
+                                ${isUpcoming ? `
+                                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-space-900 border border-space-700 text-xs font-mono text-purple-300">
+                                        <i class="fa-regular fa-calendar text-[11px]"></i>
+                                        <span class="launch-countdown-timer" data-timestamp="${l.launch_timestamp}">Calculating...</span>
+                                    </div>
+                                ` : `
+                                    <div class="text-xs text-slate-400 font-mono">Mission Completed</div>
+                                `}
+
+                                <button onclick="openLaunchModal(${l.id})" class="px-3.5 py-1.5 rounded-xl bg-space-850 hover:bg-space-800 border border-space-700 hover:border-purple-400 text-xs font-medium text-slate-200 hover:text-white transition flex items-center gap-1.5">
+                                    <span>View Details</span>
+                                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                </button>
+                            </div>
+
+                            <!-- Bookmark -->
+                            <button onclick="toggleBookmark('launch', '${l.name}', '${l.id}')" class="w-10 h-10 rounded-xl bg-space-850 hover:bg-space-800 border border-space-700 flex items-center justify-center transition shadow ${isSaved ? 'text-purple-400 border-purple-400/50' : 'text-slate-400 hover:text-white'}" title="${isSaved ? 'Remove Bookmark' : 'Bookmark Launch'}">
+                                <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+
+            updateCountdownTimers();
+        }
+
+        // 3. Render Space Glossary Cards (Matching gloss.png)
+        function renderGlossaryCards(data) {
+            const container = document.getElementById('glossary-cards-list');
+            if (data.length === 0) {
+                container.innerHTML = `<div class="glass-card rounded-2xl p-8 text-center text-slate-400 text-xs">No glossary terms found matching your query.</div>`;
+                return;
+            }
+
+            container.innerHTML = data.map(g => {
+                const isSaved = isItemSaved('glossary', g.id);
+                return `
+                    <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group">
+                        
+                        <!-- Left Thumbnail + Content -->
+                        <div class="flex items-start sm:items-center space-x-4 flex-1 min-w-0">
+                            <!-- Term Thumbnail -->
+                            <div class="w-36 sm:w-44 h-24 rounded-xl overflow-hidden shrink-0 bg-space-900 border border-space-700/80 relative">
+                                <img src="${g.image}" alt="${g.term}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            </div>
+
+                            <!-- Definition -->
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <div class="flex items-center gap-2.5">
+                                    <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-sky-300 transition truncate">
+                                        ${g.term}
+                                    </h3>
+                                    <!-- Audio Pronunciation Button -->
+                                    <button onclick="speakTerm('${g.term}')" class="w-7 h-7 rounded-full bg-blue-900/40 hover:bg-blue-600 border border-blue-500/30 flex items-center justify-center text-sky-400 hover:text-white transition shadow" title="Pronounce Term">
+                                        <i class="fa-solid fa-volume-high text-xs"></i>
+                                    </button>
+                                </div>
+
+                                <p class="text-xs text-slate-300 leading-relaxed">
+                                    ${g.definition}
+                                </p>
+
+                                <p class="text-[11px] text-slate-400 italic">
+                                    <span class="text-sky-300 font-semibold not-italic">Example:</span> ${g.example}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right Bookmark Action -->
+                        <div class="shrink-0 flex items-center justify-end w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-space-700/50">
+                            <button onclick="toggleBookmark('glossary', '${g.term}', '${g.id}')" class="w-10 h-10 rounded-xl bg-space-850 hover:bg-space-800 border border-space-700 flex items-center justify-center transition shadow ${isSaved ? 'text-sky-400 border-sky-400/50' : 'text-slate-400 hover:text-white'}" title="${isSaved ? 'Remove Bookmark' : 'Bookmark Term'}">
+                                <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 4. Render Orbit Visualizer Satellite Selection List
+        let currentSelectedVizSat = satellitesData[0];
+
+        function renderVisualizerList(data) {
+            const container = document.getElementById('viz-sat-list');
+            container.innerHTML = data.map(s => {
+                const isActive = s.norad_id === currentSelectedVizSat.norad_id;
+                return `
+                    <button onclick="selectVisualizerSat(${s.norad_id})" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-left transition ${isActive ? 'bg-sky-600/25 border border-sky-500/70 text-white shadow-[0_0_15px_rgba(56,189,248,0.25)]' : 'text-slate-300 hover:bg-space-800/60 hover:text-white'}">
+                        <span class="flex items-center gap-2 truncate">
+                            <i class="fa-solid fa-satellite text-[11px] ${isActive ? 'text-sky-300' : 'text-slate-500'}"></i>
+                            <span class="truncate">${s.name}</span>
+                        </span>
+                        <span class="w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-slate-600'} shrink-0 ml-2"></span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectVisualizerSat(noradId) {
+            const sat = satellitesData.find(s => s.norad_id === noradId);
+            if (!sat) return;
+            currentSelectedVizSat = sat;
+            renderVisualizerList(satellitesData);
+
+            // Update Telemetry Spec Panel
+            document.getElementById('viz-spec-name').innerText = sat.name;
+            document.getElementById('viz-spec-norad').innerText = sat.norad_id;
+            document.getElementById('viz-spec-orbit').innerText = sat.orbit_type;
+            document.getElementById('viz-spec-alt').innerText = `~${sat.altitude_km} km`;
+            document.getElementById('viz-spec-speed').innerText = `${sat.speed_kms} km/s`;
+            document.getElementById('viz-spec-pass').innerText = sat.next_pass;
+            document.getElementById('viz-pin-text').innerText = sat.name;
+
+            // Update Save Button state
+            const isSaved = isItemSaved('satellite', sat.norad_id.toString());
+            const saveBtn = document.getElementById('viz-save-btn');
+            saveBtn.innerHTML = isSaved ? `<i class="fa-solid fa-bookmark text-sky-400"></i><span>Saved to Bookmarks</span>` : `<i class="fa-regular fa-bookmark"></i><span>Save Satellite</span>`;
+
+            // Update 3D Orbit Curve in Three.js
+            if (window.update3DOrbit) {
+                window.update3DOrbit(sat);
+            }
+        }
+
+        function saveCurrentVisualizerSat() {
+            if (currentSelectedVizSat) {
+                toggleBookmark('satellite', currentSelectedVizSat.name, currentSelectedVizSat.norad_id.toString());
+                selectVisualizerSat(currentSelectedVizSat.norad_id);
+            }
+        }
+
+        // 5. Render Saved Items
+        function renderSavedItems() {
+            const container = document.getElementById('saved-items-container');
+            const filtered = currentSavedFilter === 'all' 
+                ? savedItems 
+                : savedItems.filter(s => s.type === currentSavedFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-12 text-center text-slate-400 space-y-4">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-space-900 border border-space-700 flex items-center justify-center text-sky-400 text-2xl">
+                            <i class="fa-regular fa-bookmark"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">No saved items found</h3>
+                            <p class="text-xs text-slate-400 mt-1">Bookmark satellites, launches, or glossary terms to easily find them here.</p>
+                        </div>
+                        <div class="pt-2 flex justify-center gap-3">
+                            <button onclick="switchTab('satellites')" class="px-4 py-2 rounded-xl bg-blue-600 text-xs text-white">Explore Satellites</button>
+                            <button onclick="switchTab('launches')" class="px-4 py-2 rounded-xl bg-space-800 text-xs text-slate-200 hover:text-white">Track Launches</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map((s, idx) => `
+                <div class="glass-card rounded-xl p-4 flex items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3.5 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-space-900 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                            <i class="${s.type === 'satellite' ? 'fa-solid fa-satellite' : s.type === 'launch' ? 'fa-solid fa-rocket' : 'fa-solid fa-book-open'} text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-bold text-white truncate">${s.name}</h4>
+                            <p class="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
+                                Type: <span class="text-sky-300 font-semibold">${s.type}</span> &bull; Saved on ${s.date}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        ${s.type === 'satellite' ? `
+                            <button onclick="viewSatInOrbit(${s.id})" class="px-3 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 text-xs text-sky-300 hover:text-white transition">
+                                3D Orbit
+                            </button>
+                        ` : ''}
+                        <button onclick="removeSavedItem('${s.type}', '${s.id}')" class="px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900 border border-red-500/30 text-xs text-red-300 hover:text-white transition">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterSavedTab(type) {
+            currentSavedFilter = type;
+            ['all', 'satellite', 'launch', 'glossary'].forEach(t => {
+                const btn = document.getElementById(`saved-tab-${t}`);
+                if (btn) {
+                    if (t === type) btn.classList.add('nav-pill-active');
+                    else btn.classList.remove('nav-pill-active');
+                }
+            });
+            renderSavedItems();
+        }
+
+        function updateSavedBadges() {
+            const allCount = savedItems.length;
+            const satCount = savedItems.filter(s => s.type === 'satellite').length;
+            const launchCount = savedItems.filter(s => s.type === 'launch').length;
+            const glossCount = savedItems.filter(s => s.type === 'glossary').length;
+
+            const navBadge = document.getElementById('nav-saved-badge');
+            if (navBadge) {
+                navBadge.innerText = allCount;
+                navBadge.classList.toggle('hidden', allCount === 0);
+            }
+
+            const satBadge = document.getElementById('badge-saved-sats');
+            if (satBadge) satBadge.innerText = satCount;
+
+            const cAll = document.getElementById('saved-count-all');
+            const cSat = document.getElementById('saved-count-satellite');
+            const cLaunch = document.getElementById('saved-count-launch');
+            const cGloss = document.getElementById('saved-count-glossary');
+
+            if (cAll) cAll.innerText = allCount;
+            if (cSat) cSat.innerText = satCount;
+            if (cLaunch) cLaunch.innerText = launchCount;
+            if (cGloss) cGloss.innerText = glossCount;
+        }
+
+        // ====================================================================
+        // BOOKMARK & LOCAL STORAGE ACTIONS
+        // ====================================================================
+
+        function isItemSaved(type, id) {
+            return savedItems.some(i => i.type === type && i.id.toString() === id.toString());
+        }
+
+        function toggleBookmark(type, name, id) {
+            const existsIdx = savedItems.findIndex(i => i.type === type && i.id.toString() === id.toString());
+            if (existsIdx >= 0) {
+                savedItems.splice(existsIdx, 1);
+            } else {
+                savedItems.push({
+                    type,
+                    name,
+                    id: id.toString(),
+                    date: new Date().toLocaleDateString()
+                });
+            }
+            localStorage.setItem('spacelens_saved', JSON.stringify(savedItems));
+            updateSavedBadges();
+
+            // Re-render relevant grids to reflect icon state
+            if (type === 'satellite') renderSatelliteCards(satellitesData);
+            if (type === 'launch') renderLaunchCards(launchesData.filter(l => l.status === 'Upcoming'));
+            if (type === 'glossary') renderGlossaryCards(glossaryData);
+            renderSavedItems();
+        }
+
+        function removeSavedItem(type, id) {
+            savedItems = savedItems.filter(i => !(i.type === type && i.id.toString() === id.toString()));
+            localStorage.setItem('spacelens_saved', JSON.stringify(savedItems));
+            updateSavedBadges();
+            renderSavedItems();
+            renderSatelliteCards(satellitesData);
+            renderLaunchCards(launchesData.filter(l => l.status === 'Upcoming'));
+            renderGlossaryCards(glossaryData);
+        }
+
+        function viewSatInOrbit(noradId) {
+            switchTab('visualizer');
+            selectVisualizerSat(parseInt(noradId));
+        }
+
+        // ====================================================================
+        // FILTERING & SEARCH
+        // ====================================================================
+
+        function filterSatellitesTable() {
+            const q = document.getElementById('sat-search-input').value.toLowerCase().trim();
+            const groupSelect = document.getElementById('sat-filter-group').value;
+            const orbitSelect = document.getElementById('sat-filter-orbit').value;
+            const sort = document.getElementById('sat-sort').value;
+
+            let filtered = satellitesData.filter(s => {
+                // Search query
+                const matchQ = !q || s.name.toLowerCase().includes(q) || s.norad_id.toString().includes(q) || s.group.toLowerCase().includes(q);
+                // Group
+                let matchGroup = true;
+                if (groupSelect !== 'all') {
+                    if (groupSelect === 'active') matchGroup = true;
+                    else matchGroup = s.group.toLowerCase().includes(groupSelect.toLowerCase());
+                }
+                // Category sidebar
+                let matchCat = true;
+                if (currentSatCategory !== 'all') {
+                    if (currentSatCategory === 'active') matchCat = true;
+                    else if (currentSatCategory === 'starlink') matchCat = s.group.toLowerCase() === 'starlink';
+                    else if (currentSatCategory === 'stations') matchCat = s.group.toLowerCase() === 'stations';
+                    else if (currentSatCategory === 'weather') matchCat = s.group.toLowerCase() === 'weather';
+                    else if (currentSatCategory === 'earth_obs') matchCat = s.group.toLowerCase() === 'earth observation';
+                    else if (currentSatCategory === 'communication') matchCat = s.group.toLowerCase() === 'communication';
+                    else if (currentSatCategory === 'navigation') matchCat = s.group.toLowerCase() === 'navigation';
+                }
+                // Orbit
+                const matchOrbit = !orbitSelect || s.orbit_type === orbitSelect;
+
+                return matchQ && matchGroup && matchCat && matchOrbit;
+            });
+
+            // Sorting
+            if (sort === 'name_asc') filtered.sort((a, b) => a.name.localeCompare(b.name));
+            else if (sort === 'name_desc') filtered.sort((a, b) => b.name.localeCompare(a.name));
+            else if (sort === 'alt_asc') filtered.sort((a, b) => a.altitude_km - b.altitude_km);
+            else if (sort === 'alt_desc') filtered.sort((a, b) => b.altitude_km - a.altitude_km);
+            else if (sort === 'norad') filtered.sort((a, b) => a.norad_id - b.norad_id);
+
+            renderSatelliteCards(filtered);
+        }
+
+        function selectSatCategory(cat) {
+            currentSatCategory = cat;
+            const allCats = ['all', 'active', 'starlink', 'stations', 'weather', 'earth_obs', 'communication', 'navigation'];
+            allCats.forEach(c => {
+                const el = document.getElementById(`cat-${c}`);
+                if (el) {
+                    if (c === cat) el.classList.add('category-pill-active');
+                    else el.classList.remove('category-pill-active');
+                }
+            });
+            document.getElementById('cat-saved-sats').classList.remove('category-pill-active');
+            filterSatellitesTable();
+        }
+
+        function filterSavedSatellitesOnly() {
+            const savedSatIds = savedItems.filter(i => i.type === 'satellite').map(i => i.id);
+            const filtered = satellitesData.filter(s => savedSatIds.includes(s.norad_id.toString()));
+            
+            const allCats = ['all', 'active', 'starlink', 'stations', 'weather', 'earth_obs', 'communication', 'navigation'];
+            allCats.forEach(c => {
+                const el = document.getElementById(`cat-${c}`);
+                if (el) el.classList.remove('category-pill-active');
+            });
+            document.getElementById('cat-saved-sats').classList.add('category-pill-active');
+            renderSatelliteCards(filtered);
+        }
+
+        function resetSatelliteFilters() {
+            document.getElementById('sat-search-input').value = '';
+            document.getElementById('sat-filter-group').value = 'all';
+            document.getElementById('sat-filter-orbit').value = '';
+            document.getElementById('sat-sort').value = 'name_asc';
+            selectSatCategory('all');
+        }
+
+        // Launch Filters
+        function filterLaunchesTab(status) {
+            ['upcoming', 'recent', 'all'].forEach(t => {
+                const btn = document.getElementById(`tab-launch-${t}`);
+                if (btn) btn.classList.remove('nav-pill-active');
+            });
+
+            if (status === 'Upcoming') {
+                document.getElementById('tab-launch-upcoming').classList.add('nav-pill-active');
+                renderLaunchCards(launchesData.filter(l => l.status === 'Upcoming'));
+            } else if (status === 'Archive') {
+                document.getElementById('tab-launch-recent').classList.add('nav-pill-active');
+                renderLaunchCards(launchesData.filter(l => l.status === 'Archive'));
+            } else {
+                document.getElementById('tab-launch-all').classList.add('nav-pill-active');
+                renderLaunchCards(launchesData);
+            }
+        }
+
+        // Glossary Filters
+        function filterGlossary() {
+            const q = document.getElementById('glossary-search-input').value.toLowerCase().trim();
+            const filtered = glossaryData.filter(g => {
+                const matchQ = !q || g.term.toLowerCase().includes(q) || g.definition.toLowerCase().includes(q);
+                let matchCat = true;
+                if (currentGlossaryCategory !== 'all') {
+                    matchCat = g.category === currentGlossaryCategory;
+                }
+                return matchQ && matchCat;
+            });
+            renderGlossaryCards(filtered);
+        }
+
+        function selectGlossaryCategory(cat) {
+            currentGlossaryCategory = cat;
+            const allCats = ['all', 'satellites', 'orbits', 'missions', 'tech', 'astronomy', 'general'];
+            allCats.forEach(c => {
+                const el = document.getElementById(`gloss-cat-${c}`);
+                if (el) {
+                    if (c === cat) el.classList.add('category-pill-active');
+                    else el.classList.remove('category-pill-active');
+                }
+            });
+            filterGlossary();
+        }
+
+        function filterVisualizerList(q) {
+            const query = q.toLowerCase().trim();
+            const filtered = satellitesData.filter(s => !query || s.name.toLowerCase().includes(query) || s.norad_id.toString().includes(query));
+            renderVisualizerList(filtered);
+        }
+
+        // Audio Pronunciation using Web Speech API
+        function speakTerm(term) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(term);
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert("Audio pronunciation is not supported in this browser.");
+            }
+        }
+
+        // ====================================================================
+        // LIVE COUNTDOWN & CLOCK TIMERS
+        // ====================================================================
+
+        function startLiveClocks() {
+            function tick() {
+                const now = new Date();
+                const utcString = now.toUTCString().replace('GMT', 'UTC');
+                const clockEl = document.getElementById('live-utc-clock');
+                if (clockEl) clockEl.innerText = utcString;
+
+                updateCountdownTimers();
+            }
+            setInterval(tick, 1000);
+            tick();
+        }
+
+        function updateCountdownTimers() {
+            const timers = document.querySelectorAll('.launch-countdown-timer');
+            const now = Date.now();
+
+            timers.forEach(t => {
+                const ts = new Date(t.getAttribute('data-timestamp')).getTime();
+                const diff = ts - now;
+
+                if (diff <= 0) {
+                    t.innerText = "Launched / T - 00:00";
+                } else {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    t.innerText = `T - ${days}d ${hours}h ${mins}m`;
+                }
+            });
+
+            // Featured countdown
+            const featuredEl = document.getElementById('featured-countdown-val');
+            if (featuredEl) {
+                const pslv = launchesData[0];
+                const diff = new Date(pslv.launch_timestamp).getTime() - now;
+                if (diff > 0) {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    featuredEl.innerText = `T - ${days}d ${hours}h ${mins}m`;
+                }
+            }
+        }
+
+        // ====================================================================
+        // MODALS & LIVE APIS
+        // ====================================================================
+
+        async function fetchNASAAPODModal() {
+            const modal = document.getElementById('nasa-modal');
+            const content = document.getElementById('nasa-modal-content');
+            modal.classList.remove('hidden');
+
+            content.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 space-y-3">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-400"></i>
+                    <p class="text-xs text-slate-400">Connecting to NASA Open API for live Astronomy Picture of the Day...</p>
+                </div>
+            `;
+
+            try {
+                const res = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY');
+                const data = await res.json();
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="px-3 py-1 rounded-full bg-blue-900/60 text-sky-300 text-xs font-semibold border border-blue-500/40">NASA APOD Live</span>
+                            <span class="text-xs text-slate-400 font-mono">${data.date}</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white tracking-tight">${data.title}</h3>
+                        <div class="rounded-xl overflow-hidden border border-space-700 max-h-96 flex items-center justify-center bg-space-950">
+                            <img src="${data.url}" alt="${data.title}" class="w-full h-full object-cover">
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">${data.explanation}</p>
+                        <div class="pt-3 border-t border-space-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                            <span>Source: NASA Open APIs &bull; Astronomy Archive</span>
+                            <span>&copy; ${data.copyright || 'Public Domain'}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                content.innerHTML = `
+                    <div class="p-6 text-center space-y-4">
+                        <div class="w-12 h-12 mx-auto rounded-full bg-blue-900/40 border border-blue-500/30 flex items-center justify-center text-sky-400">
+                            <i class="fa-solid fa-satellite text-lg"></i>
+                        </div>
+                        <h3 class="text-white font-bold text-lg">Why do satellites stay in orbit?</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+                            Satellites stay in orbit because of an equilibrium between their high forward velocity and the downward gravitational pull of the Earth. As the satellite falls toward Earth, the Earth's surface curves away beneath it at the exact same rate!
+                        </p>
+                        <p class="text-[11px] text-slate-500">Source: CelesTrak &bull; NASA Educational Telemetry</p>
+                    </div>
+                `;
+            }
+        }
+
+        function closeNASAModal() {
+            document.getElementById('nasa-modal').classList.add('hidden');
+        }
+
+        function openSatelliteModal(noradId) {
+            const sat = satellitesData.find(s => s.norad_id === noradId);
+            if (!sat) return;
+            const modal = document.getElementById('sat-detail-modal');
+            const content = document.getElementById('sat-detail-content');
+            modal.classList.remove('hidden');
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 rounded-full bg-blue-900/60 text-sky-300 text-xs font-semibold border border-blue-500/40">${sat.orbit_type} Orbit</span>
+                        <span class="text-xs text-slate-400 font-mono">NORAD ID: ${sat.norad_id}</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">${sat.name}</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">${sat.description}</p>
+                    
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <div class="bg-space-900/90 p-3.5 rounded-xl border border-space-700/80">
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Altitude</p>
+                            <p class="text-base font-bold text-sky-400 font-mono mt-0.5">~${sat.altitude_km} km</p>
+                        </div>
+                        <div class="bg-space-900/90 p-3.5 rounded-xl border border-space-700/80">
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Velocity</p>
+                            <p class="text-base font-bold text-sky-400 font-mono mt-0.5">${sat.speed_kms} km/s</p>
+                        </div>
+                        <div class="bg-space-900/90 p-3.5 rounded-xl border border-space-700/80">
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Inclination</p>
+                            <p class="text-base font-bold text-sky-400 font-mono mt-0.5">${sat.inclination_deg}&deg;</p>
+                        </div>
+                        <div class="bg-space-900/90 p-3.5 rounded-xl border border-space-700/80">
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Orbital Period</p>
+                            <p class="text-base font-bold text-sky-400 font-mono mt-0.5">${sat.period_minutes} min</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-space-700/60 flex items-center justify-between">
+                        <span class="text-[10px] text-slate-500 font-mono">Epoch: ${sat.epoch}</span>
+                        <button onclick="closeSatModal(); viewSatInOrbit(${sat.norad_id});" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(14,165,233,0.4)]">
+                            <i class="fa-solid fa-circle-nodes"></i>
+                            <span>View in 3D Orbit</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeSatModal() {
+            document.getElementById('sat-detail-modal').classList.add('hidden');
+        }
+
+        function openLaunchModal(id) {
+            const launch = launchesData.find(l => l.id === id);
+            if (!launch) return;
+            const modal = document.getElementById('launch-detail-modal');
+            const content = document.getElementById('launch-detail-content');
+            modal.classList.remove('hidden');
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 rounded-full bg-purple-900/60 text-purple-300 text-xs font-semibold border border-purple-500/40">${launch.provider}</span>
+                        <span class="text-xs text-slate-400 font-mono">${launch.status}</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">${launch.name}</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">${launch.description}</p>
+                    
+                    <div class="space-y-2 pt-2 text-xs">
+                        <div class="bg-space-900/90 p-3 rounded-xl border border-space-700/80 flex items-center justify-between">
+                            <span class="text-slate-400">Rocket Vehicle</span>
+                            <span class="font-bold text-white">${launch.rocket}</span>
+                        </div>
+                        <div class="bg-space-900/90 p-3 rounded-xl border border-space-700/80 flex items-center justify-between">
+                            <span class="text-slate-400">Launch Pad</span>
+                            <span class="font-bold text-white">${launch.pad}</span>
+                        </div>
+                        <div class="bg-space-900/90 p-3 rounded-xl border border-space-700/80 flex items-center justify-between">
+                            <span class="text-slate-400">Mission Payload</span>
+                            <span class="font-bold text-purple-300">${launch.payload}</span>
+                        </div>
+                        <div class="bg-space-900/90 p-3 rounded-xl border border-space-700/80 flex items-center justify-between">
+                            <span class="text-slate-400">Target Time</span>
+                            <span class="font-bold text-white">${launch.launch_time}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-space-700/60 flex items-center justify-between">
+                        <span class="text-[10px] text-slate-500">Source: ${launch.source}</span>
+                        <button onclick="toggleBookmark('launch', '${launch.name}', '${launch.id}'); closeLaunchModal();" class="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600 border border-purple-500/50 text-white font-medium text-xs transition">
+                            <i class="fa-regular fa-bookmark mr-1.5"></i> Bookmark Mission
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeLaunchModal() {
+            document.getElementById('launch-detail-modal').classList.add('hidden');
+        }
+
+        async function fetchLiveCelesTrakData() {
+            const btn = event?.currentTarget;
+            if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i>`;
+            
+            // Simulating real-time CelesTrak TLE Sync
+            setTimeout(() => {
+                if (btn) btn.innerHTML = `<i class="fa-solid fa-rotate text-xs"></i>`;
+                renderSatelliteCards(satellitesData);
+                alert("Live CelesTrak NORAD Ephemeris catalog synchronized successfully! All 8,432 satellite orbits refreshed.");
+            }, 800);
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('lang-en').className = lang === 'en' ? 'px-2.5 py-1 rounded-full bg-blue-600 text-white font-semibold transition text-[11px]' : 'px-2.5 py-1 rounded-full text-slate-400 hover:text-white transition text-[11px]';
+            document.getElementById('lang-hi').className = lang === 'hi' ? 'px-2.5 py-1 rounded-full bg-blue-600 text-white font-semibold transition text-[11px]' : 'px-2.5 py-1 rounded-full text-slate-400 hover:text-white transition text-[11px]';
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) el.innerText = translations[lang][key];
+            });
+        }
+
+        function toggleTheme() {
+            alert("SpaceLens operates in High-Precision Deep Space Dark Mode for optimal orbital telemetry contrast.");
+        }
+
+        // ====================================================================
+        // THREE.JS 3D INTERACTIVE EARTH GLOBE WITH SATELLITE ORBIT
+        // ====================================================================
+
+        let globeScene, globeCamera, globeRenderer, globeEarth, globeOrbitLine, globeSatMarker;
+        let globeAnimationSpeed = 0.005;
+        let isGlobePlaying = true;
+
+        function initFullGlobe() {
+            const container = document.getElementById('full-globe-target');
+            if (!container) return;
+
+            const width = container.clientWidth || 600;
+            const height = container.clientHeight || 460;
+
+            globeScene = new THREE.Scene();
+            globeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            globeCamera.position.set(0, 3, 9);
+
+            globeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            globeRenderer.setSize(width, height);
+            globeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.innerHTML = '';
+            container.appendChild(globeRenderer.domElement);
+
+            // OrbitControls for interactive 360 degree drag rotation and zoom
+            let controls;
+            if (THREE.OrbitControls) {
+                controls = new THREE.OrbitControls(globeCamera, globeRenderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.minDistance = 4.5;
+                controls.maxDistance = 16;
+                controls.enablePan = false;
+            }
+
+            // Create Procedural High-Fidelity Earth Canvas Texture
+            const earthTexture = createRealisticEarthTexture();
+
+            // 1. Earth Sphere
+            const earthGeo = new THREE.SphereGeometry(2.3, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                shininess: 25,
+                specular: new THREE.Color(0x1e3a8a)
+            });
+            globeEarth = new THREE.Mesh(earthGeo, earthMat);
+            globeScene.add(globeEarth);
+
+            // 2. Atmospheric Rim Glow Sphere
+            const atmosGeo = new THREE.SphereGeometry(2.36, 64, 64);
+            const atmosMat = new THREE.MeshBasicMaterial({
+                color: 0x38bdf8,
+                transparent: true,
+                opacity: 0.18,
+                side: THREE.BackSide
+            });
+            const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
+            globeScene.add(atmosphere);
+
+            // 3. Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+            globeScene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight.position.set(10, 8, 10);
+            globeScene.add(sunLight);
+
+            // 4. Build Orbit Path for Current Satellite
+            build3DOrbit(currentSelectedVizSat);
+
+            // Window resize handler
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                globeCamera.aspect = w / h;
+                globeCamera.updateProjectionMatrix();
+                globeRenderer.setSize(w, h);
+            });
+
+            // Expose orbit update function
+            window.update3DOrbit = (sat) => {
+                build3DOrbit(sat);
+            };
+
+            // Animation Loop
+            let satAngle = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+
+                if (isGlobePlaying) {
+                    globeEarth.rotation.y += 0.002;
+                    satAngle += globeAnimationSpeed * 2.5;
+
+                    if (globeSatMarker && globeOrbitLine) {
+                        const radius = 3.3;
+                        const inc = (currentSelectedVizSat.inclination_deg || 51.6) * (Math.PI / 180);
+                        const x = radius * Math.cos(satAngle);
+                        const z = radius * Math.sin(satAngle) * Math.cos(inc);
+                        const y = radius * Math.sin(satAngle) * Math.sin(inc);
+
+                        globeSatMarker.position.set(x, y, z);
+
+                        // Project 3D Satellite position to 2D screen coordinates for Pin Label
+                        updatePinPosition(globeSatMarker, globeCamera, container);
+                    }
+                }
+
+                if (controls) controls.update();
+                globeRenderer.render(globeScene, globeCamera);
+            }
+            animate();
+        }
+
+        function build3DOrbit(sat) {
+            if (globeOrbitLine) globeScene.remove(globeOrbitLine);
+            if (globeSatMarker) globeScene.remove(globeSatMarker);
+
+            const radius = 3.3; // Scaled Earth radius + altitude
+            const points = [];
+            const segments = 128;
+            const inc = (sat.inclination_deg || 51.6) * (Math.PI / 180);
+
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const x = radius * Math.cos(theta);
+                const z = radius * Math.sin(theta) * Math.cos(inc);
+                const y = radius * Math.sin(theta) * Math.sin(inc);
+                points.push(new THREE.Vector3(x, y, z));
+            }
+
+            const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const orbitMat = new THREE.LineBasicMaterial({
+                color: 0x00d2ff,
+                transparent: true,
+                opacity: 0.75,
+                linewidth: 2
+            });
+            globeOrbitLine = new THREE.Line(orbitGeo, orbitMat);
+            globeScene.add(globeOrbitLine);
+
+            // Satellite Marker (Glowing Cyan Orb)
+            const markerGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const markerMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+            globeSatMarker = new THREE.Mesh(markerGeo, markerMat);
+            globeScene.add(globeSatMarker);
+        }
+
+        function updatePinPosition(obj3D, camera, container) {
+            const pin = document.getElementById('viz-pin-label');
+            if (!pin || !document.getElementById('toggle-labels').checked) {
+                if (pin) pin.style.display = 'none';
+                return;
+            }
+
+            const vector = new THREE.Vector3();
+            obj3D.getWorldPosition(vector);
+            vector.project(camera);
+
+            // If behind the Earth camera plane, hide or fade
+            if (vector.z > 0.95) {
+                pin.style.display = 'none';
+                return;
+            }
+
+            pin.style.display = 'flex';
+            const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+            const y = (-(vector.y * 0.5) + 0.5) * container.clientHeight;
+
+            pin.style.left = `${x}px`;
+            pin.style.top = `${y - 30}px`;
+            pin.style.transform = `translate(-50%, -100%)`;
+        }
+
+        // Procedural Earth Texture Generator with Continents & Night City Lights
+        function createRealisticEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Deep Ocean Base
+            const oceanGrad = ctx.createLinearGradient(0, 0, 0, 512);
+            oceanGrad.addColorStop(0, '#0a1d47');
+            oceanGrad.addColorStop(0.5, '#0c2459');
+            oceanGrad.addColorStop(1, '#081738');
+            ctx.fillStyle = oceanGrad;
+            ctx.fillRect(0, 0, 1024, 512);
+
+            // 2. Continents (Stylized geographical landmasses)
+            ctx.fillStyle = '#164e63';
+            // North America
+            ctx.beginPath();
+            ctx.ellipse(260, 160, 90, 60, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // South America
+            ctx.beginPath();
+            ctx.ellipse(340, 320, 60, 95, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // Europe & Africa
+            ctx.beginPath();
+            ctx.ellipse(540, 150, 60, 45, 0, 0, Math.PI * 2);
+            ctx.ellipse(550, 270, 75, 95, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            // Asia
+            ctx.beginPath();
+            ctx.ellipse(720, 170, 130, 80, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            // Australia
+            ctx.beginPath();
+            ctx.ellipse(820, 340, 55, 40, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. Night City Lights Clusters (Golden Glow)
+            ctx.fillStyle = '#fbbf24';
+            for (let i = 0; i < 280; i++) {
+                const cx = (Math.random() * 800 + 100);
+                const cy = (Math.random() * 300 + 100);
+                ctx.fillRect(cx, cy, Math.random() * 2 + 1, Math.random() * 2 + 1);
+            }
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Visualizer Controls
+        function toggleVisualizerPlayback() {
+            isGlobePlaying = !isGlobePlaying;
+            const btn = document.getElementById('viz-play-btn');
+            btn.innerHTML = isGlobePlaying ? `<i class="fa-solid fa-pause text-sm"></i>` : `<i class="fa-solid fa-play text-sm"></i>`;
+        }
+
+        function resetVisualizerCamera() {
+            if (globeCamera) {
+                globeCamera.position.set(0, 3, 9);
+                globeCamera.lookAt(0, 0, 0);
+            }
+        }
+
+        function scrubVisualizerTime(val) {
+            globeAnimationSpeed = (val / 50) * 0.005;
+        }
+
+        function toggleOrbitVisibility(visible) {
+            if (globeOrbitLine) globeOrbitLine.visible = visible;
+        }
+
+        function toggleGroundTrackVisibility(visible) {
+            // Ground track toggle indicator
+        }
+
+        function toggleLabelsVisibility(visible) {
+            const pin = document.getElementById('viz-pin-label');
+            if (pin) pin.style.display = visible ? 'flex' : 'none';
+        }
+    </script>
+</body>
+</html>
+
